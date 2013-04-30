@@ -1,6 +1,17 @@
 
+var https = require('https');
+var fs = require('fs');
+
 var express = require('express');
 var detect = require('./lib/detect');
+var argv = require('optimist')
+  .boolean('s')
+  .alias('s', 'secure')
+  .describe('s', 'Start an HTTPS server.')
+  .alias('p', 'port')
+  .describe('p', 'Port to run server on.')
+  .default('p', 3000)
+  .argv;
 
 var app = express();
 
@@ -14,6 +25,17 @@ app.get('/detect/features', function (req, res) {
   });
 });
 
-var port = process.env.PORT || 3000;
-app.listen(port);
-console.log('Listening on port ' + port);
+if (argv.secure) {
+  var options = {
+    key : fs.readFileSync('./ssl/rp-key.pem').toString(),
+    cert : fs.readFileSync('./ssl/rp-cert.pem').toString()
+  };
+
+  require('https').createServer(options, app).listen(app.get('port'), function(){
+    console.log("Express server listening on port " + app.get('port'));
+  });
+}
+else {
+  app.listen(argv.port);
+  console.log('Listening on port', argv.port);
+}
