@@ -1,5 +1,6 @@
 
 var https = require('https');
+var http = require('http');
 var fs = require('fs');
 
 var express = require('express');
@@ -27,15 +28,14 @@ app.get('/detect/features', function (req, res) {
 
 if (argv.secure) {
   var options = {
-    key : fs.readFileSync('./ssl/rp-key.pem').toString(),
-    cert : fs.readFileSync('./ssl/rp-cert.pem').toString()
+    key : fs.readFileSync('./ssl/key.pem').toString(),
+    cert : fs.readFileSync('./ssl/cert.pem').toString()
   };
 
-  require('https').createServer(options, app).listen(app.get('port'), function(){
-    console.log("Express server listening on port " + app.get('port'));
+  require('https').createServer(options, app).listen(8443, function () {
+    console.log('secure server listening on port 443');
   });
 }
-else {
-  app.listen(argv.port);
-  console.log('Listening on port', argv.port);
-}
+
+http.createServer(app).listen(argv.port);
+console.log('server listening on port', argv.port);
