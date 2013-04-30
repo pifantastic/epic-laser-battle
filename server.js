@@ -12,6 +12,8 @@ var argv = require('optimist')
   .alias('p', 'port')
   .describe('p', 'Port to run server on.')
   .default('p', 3000)
+  .describe('secure-port', 'Port to run secure server on.')
+  .default('secure-port', 443)
   .argv;
 
 var app = express();
@@ -29,11 +31,12 @@ app.get('/detect/features', function (req, res) {
 if (argv.secure) {
   var options = {
     key : fs.readFileSync('./ssl/key.pem').toString(),
+    ca: [fs.readFileSync('./ssl/ca.primary').toString(), fs.readFileSync('./ssl/ca.secondary').toString()],
     cert : fs.readFileSync('./ssl/cert.pem').toString()
   };
 
-  require('https').createServer(options, app).listen(8443, function () {
-    console.log('secure server listening on port 443');
+  require('https').createServer(options, app).listen(argv['secure-port'], function () {
+    console.log('secure server listening on port', argv['secure-port']);
   });
 }
 
