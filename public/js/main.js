@@ -1,6 +1,9 @@
 
 (function ($) {
 
+  var windowWidth = $(window).width();
+  var windowHeight = $(window).height();
+
   $.noConflict(true);
 
   var requestAnimationFrame = window.requestAnimationFrame ||
@@ -18,7 +21,7 @@
     var position = this.$elem.position();
 
     if (this.data.eyesBig || this.data.eyesSmall) {
-      var eyes = this.data.eyesBig[0] || this.data.eyesSmall[0];
+      var eyes = this.data.eyesBig ? this.data.eyesBig[0] : this.data.eyesSmall[0];
 
       return {
         x : position.left + eyes.x + ( eyes.width * (1 / 5) ),
@@ -26,7 +29,7 @@
       };
     }
     else if (this.data.leftEye || this.data.rightEye) {
-      var eye = this.data.leftEye[0] || this.data.rightEye[0];
+      var eye = this.data.leftEye ? this.data.leftEye[0] : this.data.rightEye[0];
 
       return {
         x : position.left + eye.x + (eye.width / 2),
@@ -53,13 +56,15 @@
     this.width = Math.round( Math.abs( this.length * Math.sin(this.angle) ) );
     this.height = Math.round( Math.abs( this.length * Math.cos(this.angle) ) );
 
+    var top = this.y - (this.length / 2);
+
     this.elem = $('<div />')
       .css({
         position : 'absolute',
         width : '3px',
         height : this.length + 'px',
         left : this.x + 'px',
-        top : this.y - (this.length / 2) + 'px',
+        top : top + 'px',
         'background-color' : 'red',
         'box-shadow' : '0 0 10px 5px red',
         'z-index' : 100,
@@ -72,53 +77,45 @@
         this.remove();
       });
 
-    var pos = this.elem.position();
-
-    this.p1 = {
-      x : this.x,
-      y : pos.top
-    };
-    this.p2 = {
-      x : this.x + this.width,
-      y : pos.top + this.height
-    };
-
     return this;
   };
 
   Laser.prototype.intersects = function (elem) {
     var $elem = $(elem);
     var pos = $elem.position();
-    var left = $elem.position().left;
+    var left = pos.left;
     var width = $elem.width();
     var top = pos.top;
     var height = $elem.height();
 
-    var minX = this.p1.x;
-    var maxX = this.p2.x;
+    var minX = this.start.x;
+    var maxX = this.end.x;
 
-    if (this.p1.x > this.p2.x) {
-        minX = this.p2.x;
-        maxX = this.p1.x;
+    if (this.start.x > this.end.x) {
+        minX = this.end.x;
+        maxX = this.start.x;
     }
 
-    if (maxX > this.left + this.width)
-        maxX = this.left + this.width;
+    if (maxX > left + width) {
+      maxX = left + width;
+    }
 
-    if (minX < this.left)
-        minX = this.left;
+    if (minX < left) {
+      minX = left;
+    }
 
-    if (minX > maxX)
-        return false;
+    if (minX > maxX) {
+      return false;
+    }
 
-    var minY = this.p1.y;
-    var maxY = this.p2.y;
+    var minY = this.start.y;
+    var maxY = this.end.y;
 
-    var dx = this.p2.x - this.p1.x;
+    var dx = this.end.x - this.start.x;
 
     if (Math.abs(dx) > 0.0000001) {
-        var a = (this.p2.y - this.p1.y) / dx;
-        var b = this.p1.y - a * this.p1.x;
+        var a = (this.end.y - this.start.y) / dx;
+        var b = this.start.y - a * this.start.x;
         minY = a * minX + b;
         maxY = a * maxX + b;
     }
@@ -129,14 +126,17 @@
         minY = tmp;
     }
 
-    if (maxY > this.top + this.height)
-        maxY = this.top + this.height;
+    if (maxY > top + height) {
+      maxY = top + height;
+    }
 
-    if (minY < this.top)
-        minY = this.top;
+    if (minY < top) {
+      minY = top;
+    }
 
-    if (minY > maxY)
-        return false;
+    if (minY > maxY) {
+      return false;
+    }
 
     return true;
   };
@@ -150,13 +150,18 @@
     this.shooting = false;
     this.health = 100;
     this.dead = false;
+    this.width = 0;
+    this.height = 0;
   };
 
   BattleImage.prototype.findfeatures = function () {
     var self = this;
     var url = this.$image.find('img').attr('src');
+    if (url.indexOf('://') === -1) {
+      url = window.location.protocol + '//' + window.location.host + url;
+    }
 
-    return $.getJSON('/detect/features?callback=?', { url : url }).done(function (data) {
+    return $.getJSON('https://epic-laser-battle.com/detect/features?callback=?', { url : url }).done(function (data) {
       if (data.error) {
         console.error(data.error);
       }
@@ -169,15 +174,17 @@
     var self = this;
     var dfd = $.Deferred();
 
-    this.$image.load(function () {
-      var position = self.$image.position();
+    this.$image.one('load', function () {
+      var position = self.$image.offset();
+      self.width = self.$image.width();
+      self.height = self.$image.height();
 
       self.$image = self.$image
         .wrap(
           $('<span class="placeholder" />')
             .css({ display : 'inline-block' })
-            .width( self.$image.width() )
-            .height( self.$image.height() )
+            .width( self.width )
+            .height( self.height )
         )
         .detach()
         .css({ opacity : '0.75' })
@@ -197,11 +204,16 @@
         self.$image.css({
           position : 'absolute',
           top : position.top + 'px',
-          left : position.left + 'px'
+          left : position.left + 'px',
+          'z-index' : 100
         })
       );
 
       dfd.resolve();
+    }).each(function () {
+      if (this.complete) {
+        $(this).load();
+      }
     });
 
     return dfd.promise();
@@ -222,8 +234,8 @@
 
     // Find a random point within the window.
     var end = {
-      x : Math.round( $(window).width() * Math.random() ),
-      y : Math.round( $(window).height() * Math.random() )
+      x : Math.round( windowWidth * Math.random() ),
+      y : Math.round( windowHeight * Math.random() )
     };
 
     this.shooting = true;
@@ -245,16 +257,33 @@
     var distance = Math.round( Math.random() * 4 );
 
     // Change direction on some probability.
-    this.direction.x = Math.random() > 0.99 ? this.direction.x * -1 : this.direction.x;
-    this.direction.y = Math.random() > 0.99 ? this.direction.y * -1 : this.direction.y;
+    if (pos.left <= 0) {
+      this.direction.x = 1;
+    }
+    else if (pos.left + this.width > windowWidth) {
+      this.direction.x = -1;
+    }
+    else {
+      this.direction.x = Math.random() > 0.99 ? this.direction.x * -1 : this.direction.x;
+    }
+
+    if (pos.top <= 0) {
+      this.direction.y = 1;
+    }
+    else if (pos.top + this.height > windowHeight) {
+      this.direction.y = -1;
+    }
+    else {
+      this.direction.y = Math.random() > 0.99 ? this.direction.y * -1 : this.direction.y;
+    }
 
     var left = (this.direction.x * distance) + pos.left;
     var top = (this.direction.y * distance) + pos.top;
 
     // Update the position.
     this.$image.css({
-      left : (left < 0 ? 0 : left) + 'px',
-      top : (top < 0 ? 0 : top) + 'px'
+      left : left + 'px',
+      top : top + 'px'
     });
   };
 
@@ -268,7 +297,15 @@
       this.destroy();
     }
 
-    this.$image.find('.battle-hp').css({ width : this.health + '%' });
+    this.$image
+      .find('.battle-hp')
+      .css({
+        width : this.health + '%',
+        backgroundColor : 'red'
+      })
+      .animate({
+        backgroundColor : 'green'
+      }, 'slow');
   };
 
   BattleImage.prototype.destroy = function () {
@@ -298,13 +335,15 @@
         _(self.images).each(function (image, index) {
           if ( image.shouldShoot() ) {
             var laser = image.shoot();
-            _(self.images).each(function (otherImage, otherIndex) {
-              if (otherIndex !== index) {
-                if ( laser.intersects(otherImage.image) ) {
-                  otherImage.damage();
+            if (laser) {
+              _(self.images).each(function (otherImage, otherIndex) {
+                if (otherIndex !== index) {
+                  if ( laser.intersects(otherImage.image) ) {
+                    otherImage.damage();
+                  }
                 }
-              }
-            });
+              });
+            }
           }
           else {
             image.move();

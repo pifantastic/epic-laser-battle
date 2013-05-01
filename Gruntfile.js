@@ -14,6 +14,7 @@ module.exports = function (grunt) {
         src : [
           'build/header.js',
           'public/js/vendor/jquery.js',
+          'public/js/vendor/jquery.color.js',
           'public/js/vendor/underscore.js',
           'public/js/main.js',
           'build/footer.js'
@@ -27,7 +28,7 @@ module.exports = function (grunt) {
       },
       build : {
         files : {
-          'public/epic-laser-battle.min.js': ['public/epic-laser-battle.js']
+          'public/epic-laser-battle.min.js' : ['public/epic-laser-battle.js']
         }
       }
     }
