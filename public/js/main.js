@@ -190,11 +190,9 @@
         .css({ opacity : '0.75' })
         .wrap('<div />')
         .after($('<div class="battle-hp" />').css({
-          height : '3px',
+          height : '10px',
           'background-color' : 'green',
-          'box-shadow' : '0 0 10px 5px green',
-          'z-index' : 100,
-          'border-radius' : '50%'
+          'z-index' : 100
         }))
         .parent();
 
