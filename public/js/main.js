@@ -69,6 +69,7 @@
         'box-shadow' : '0 0 10px 5px red',
         'z-index' : 100,
         '-webkit-transform' : 'rotate(' + this.angle + 'deg)',
+        '-moz-transform' : 'rotate(' + this.angle + 'deg)',
         'border-radius' : '50%'
       })
       .appendTo('body')
