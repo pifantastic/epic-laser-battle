@@ -4,19 +4,24 @@
   var windowWidth = $(window).width();
   var windowHeight = $(window).height();
 
+  // Avoid clobbering any existing jQueryies.
   $.noConflict(true);
 
+  // Be kind to folks' cpus.
   var requestAnimationFrame = window.requestAnimationFrame ||
     window.mozRequestAnimationFrame ||
     window.webkitRequestAnimationFrame ||
     window.msRequestAnimationFrame;
 
+  // Takes feature data from the JSON API and returns coordinates that can
+  // be used to find facial features.
   var Features = function (elem, data) {
     this.elem = elem;
     this.$elem = $(elem);
     this.data = data;
   };
 
+  // Return a deecent set of coordinates of a facial feature.
   Features.prototype.coords = function () {
     var position = this.$elem.position();
 
@@ -38,11 +43,13 @@
     }
   };
 
+  // Render a laser between the specified start and end coordinates.
   var Laser = function (start, end) {
     this.start = start;
     this.end = end;
   };
 
+  // Fire the laser, fading it out and removing it afterwards.
   Laser.prototype.fire = function (callback) {
     this.x = this.start.x + (this.end.x - this.start.x) / 2;
     this.y = this.start.y + (this.end.y - this.start.y) / 2;
@@ -81,6 +88,7 @@
     return this;
   };
 
+  // Return true if the laser intersects the given element.
   Laser.prototype.intersects = function (elem) {
     var $elem = $(elem);
     var pos = $elem.position();
@@ -93,8 +101,8 @@
     var maxX = this.end.x;
 
     if (this.start.x > this.end.x) {
-        minX = this.end.x;
-        maxX = this.start.x;
+      minX = this.end.x;
+      maxX = this.start.x;
     }
 
     if (maxX > left + width) {
@@ -115,16 +123,16 @@
     var dx = this.end.x - this.start.x;
 
     if (Math.abs(dx) > 0.0000001) {
-        var a = (this.end.y - this.start.y) / dx;
-        var b = this.start.y - a * this.start.x;
-        minY = a * minX + b;
-        maxY = a * maxX + b;
+      var a = (this.end.y - this.start.y) / dx;
+      var b = this.start.y - a * this.start.x;
+      minY = a * minX + b;
+      maxY = a * maxX + b;
     }
 
     if (minY > maxY) {
-        var tmp = maxY;
-        maxY = minY;
-        minY = tmp;
+      var tmp = maxY;
+      maxY = minY;
+      minY = tmp;
     }
 
     if (maxY > top + height) {
@@ -142,6 +150,7 @@
     return true;
   };
 
+  // Represents an image that's part of the battle.
   var BattleImage = function (image) {
     this.src = image.src;
     this.image = image;
@@ -155,6 +164,7 @@
     this.height = 0;
   };
 
+  // Find the facial features on the image.
   BattleImage.prototype.findfeatures = function () {
     var self = this;
     var url = this.$image.find('img').attr('src');
@@ -171,6 +181,8 @@
     });
   };
 
+  // Prepare the image for battle. Detaches it from the DOM, leaving behind
+  // a placeholder so the original DOM isn't disrupted.
   BattleImage.prototype.ready = function () {
     var self = this;
     var dfd = $.Deferred();
@@ -218,10 +230,14 @@
     return dfd.promise();
   };
 
+  // Return true of the image shoot.
+  // TODO: Make this more interesting.
   BattleImage.prototype.shouldShoot = function () {
     return !this.dead && !this.shooting && Math.random() > 0.98;
   };
 
+  // Fire a laser beam from eyes or mouths or something.
+  // TODO: Make this more interesting.
   BattleImage.prototype.shoot = function () {
     var self = this;
     var start = this.features && this.features.coords();
@@ -237,6 +253,7 @@
       y : Math.round( windowHeight * Math.random() )
     };
 
+    // Fire ze laser!
     this.shooting = true;
     var laser = new Laser(start, end).fire(function () {
       self.shooting = false;
@@ -245,6 +262,7 @@
     return laser;
   };
 
+  // Move the image. Detects window boundaries.
   BattleImage.prototype.move = function () {
     if (this.dead || this.shooting) {
       return;
@@ -286,6 +304,7 @@
     });
   };
 
+  // Take damage. Update the HP bar.
   BattleImage.prototype.damage = function () {
     if (this.dead) {
       return;
@@ -307,17 +326,22 @@
       }, 'slow');
   };
 
+  // X(
   BattleImage.prototype.destroy = function () {
     this.dead = true;
     this.$image.remove();
   };
 
+  // Conducts an epic laser battle.
   var Battle = function (images) {
+    // Convert DOM images into battle images.
     this.images = _(images).map(function (image) {
       return new BattleImage(image);
     });
   };
 
+  // Find the facial features for all the images that are a
+  // part of the battle.
   Battle.prototype.findfeatures = function (callback) {
     return $.when.apply($, _(this.images).map(function (image) {
       return image.ready().then(function () {
@@ -326,45 +350,34 @@
     }));
   };
 
+  // Start the battle!
   Battle.prototype.commence = function () {
     var self = this;
 
     var loop = function () {
-      if (!self.stopped) {
-        _(self.images).each(function (image, index) {
-          if ( image.shouldShoot() ) {
-            var laser = image.shoot();
-            if (laser) {
-              _(self.images).each(function (otherImage, otherIndex) {
-                if (otherIndex !== index) {
-                  if ( laser.intersects(otherImage.image) ) {
-                    otherImage.damage();
-                  }
+      _(self.images).each(function (image, index) {
+        if ( image.shouldShoot() ) {
+          var laser = image.shoot();
+          if (laser) {
+            _(self.images).each(function (otherImage, otherIndex) {
+              if (otherIndex !== index) {
+                if ( laser.intersects(otherImage.image) ) {
+                  otherImage.damage();
                 }
-              });
-            }
+              }
+            });
           }
-          else {
-            image.move();
-          }
-        });
-      }
+        }
+        else {
+          image.move();
+        }
+      });
 
       requestAnimationFrame( _(loop).bind(this) );
     };
 
     loop();
 
-    return this;
-  };
-
-  Battle.prototype.stop = function () {
-    this.stopped = true;
-    return this;
-  };
-
-  Battle.prototype.start = function () {
-    this.stopped = false;
     return this;
   };
 
@@ -378,6 +391,11 @@
     return this;
   };
 
-  $('img').battle();
+  // Expose a method for the bookmarklet.
+  window.EPICLASERBATTLE = function () {
+    $(function () {
+      $('img').battle();
+    });
+  };
 
 })(jQuery);
